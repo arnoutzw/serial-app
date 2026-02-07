@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#09090b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ESP Flash">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+  <title>ESP Flash Tool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #09090b;
+      --surface: #18181b;
+      --surface2: #27272a;
+      --border: #3f3f46;
+      --text: #f4f4f5;
+      --text-dim: #a1a1aa;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --orange: #fb923c;
+      --radius: 12px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+    html { font-size: 16px; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ──────────────────────────────────── */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(9, 9, 11, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--surface2);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-title svg { width: 28px; height: 28px; }
+
+    .header-title h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .connection-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--surface2);
+      transition: background 0.3s;
+    }
+    .connection-dot.connected { background: var(--green); }
+    .connection-dot.connecting {
+      background: var(--yellow);
+      animation: pulse 1s infinite;
+    }
+    .connection-dot.disconnected { background: var(--red); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    #installBtn {
+      display: none;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: var(--accent-glow);
+      color: var(--accent);
+      border: 1.5px solid rgba(56, 189, 248, 0.3);
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #installBtn:hover { background: rgba(56, 189, 248, 0.25); }
+
+    /* ── Tabs ─────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--surface2);
+      padding: 0 16px;
+      gap: 0;
+    }
+
+    .tab-btn {
+      padding: 12px 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      font-family: inherit;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── Main ─────────────────────────────────────── */
+    .main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px 16px calc(16px + var(--safe-bottom));
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Section (collapsible card) ───────────────── */
+    .section {
+      background: var(--surface);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .section-header:hover { background: rgba(255,255,255,0.03); }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .section-title svg { width: 16px; height: 16px; color: var(--accent); }
+
+    .section-chevron {
+      width: 16px; height: 16px;
+      color: var(--text-dim);
+      transition: transform 0.3s;
+    }
+
+    .section.open .section-chevron { transform: rotate(180deg); }
+
+    .section-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease;
+    }
+
+    .section.open .section-body { max-height: 2000px; }
+
+    .section-content { padding: 0 14px 14px; }
+
+    /* ── Buttons ──────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 999px;
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      font-family: inherit;
+    }
+
+    .btn svg { width: 16px; height: 16px; }
+
+    .btn-primary { background: var(--accent); color: var(--bg); }
+    .btn-primary:hover { filter: brightness(1.1); transform: scale(1.02); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; }
+
+    .btn-danger { background: rgba(248,113,113,0.15); color: var(--red); border: 1.5px solid rgba(248,113,113,0.25); }
+    .btn-danger:hover:not(:disabled) { background: rgba(248,113,113,0.25); }
+    .btn-danger:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-outline { background: transparent; color: var(--text-dim); border: 1.5px solid var(--border); }
+    .btn-outline:hover:not(:disabled) { color: var(--text); border-color: var(--text-dim); }
+    .btn-outline:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-success { background: rgba(74,222,128,0.15); color: var(--green); border: 1.5px solid rgba(74,222,128,0.25); }
+    .btn-success:hover:not(:disabled) { background: rgba(74,222,128,0.25); }
+    .btn-success:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-warning { background: rgba(251,191,36,0.15); color: var(--yellow); border: 1.5px solid rgba(251,191,36,0.25); }
+    .btn-warning:hover:not(:disabled) { background: rgba(251,191,36,0.25); }
+    .btn-warning:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-sm { padding: 7px 14px; font-size: 0.8rem; }
+    .btn-xs { padding: 5px 10px; font-size: 0.75rem; }
+
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── Form Controls ────────────────────────────── */
+    .form-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+    }
+
+    select, input[type="text"], input[type="number"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      font-family: var(--mono);
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+
+    select:focus, input:focus { border-color: var(--accent); }
+    select { cursor: pointer; padding-right: 28px; }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 16px; height: 16px;
+      cursor: pointer;
+    }
+
+    .checkbox-group label {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+
+    /* ── Chip Info Badge ──────────────────────────── */
+    .chip-info {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: var(--accent-glow);
+      border: 1px solid rgba(56,189,248,0.2);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: var(--accent);
+      font-family: var(--mono);
+    }
+    .chip-info.visible { display: block; }
+
+    /* ── File Entries ─────────────────────────────── */
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .file-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--surface2);
+      border-radius: 8px;
+      flex-wrap: wrap;
+    }
+
+    .file-entry input[type="text"] { width: 100px; font-size: 0.82rem; padding: 6px 10px; }
+    .file-entry input[type="file"] { display: none; }
+
+    .file-name {
+      flex: 1;
+      min-width: 100px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-name.has-file { color: var(--green); }
+
+    .file-progress {
+      width: 100%;
+      height: 4px;
+      background: var(--surface2);
+      border-radius: 2px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .file-progress .bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.2s;
+    }
+
+    /* ── Flash Options ────────────────────────────── */
+    .flash-options {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-top: 6px;
+    }
+
+    /* ── Terminal ─────────────────────────────────── */
+    .terminal-wrap {
+      background: #000;
+      border: 1px solid var(--surface2);
+      border-radius: 8px;
+      padding: 6px;
+      overflow: hidden;
+    }
+
+    /* ── Alert / Toast ────────────────────────────── */
+    .alert {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .alert-error {
+      background: rgba(248,113,113,0.12);
+      color: var(--red);
+      border: 1px solid rgba(248,113,113,0.2);
+    }
+
+    .alert-success {
+      background: rgba(74,222,128,0.12);
+      color: var(--green);
+      border: 1px solid rgba(74,222,128,0.2);
+    }
+
+    .alert .close-alert {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: calc(20px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--red);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      font-weight: 600;
+      z-index: 200;
+      transition: transform 0.3s;
+      max-width: 90vw;
+      text-align: center;
+    }
+    .toast.visible { transform: translateX(-50%) translateY(0); }
+    .toast.success { background: var(--green); color: var(--bg); }
+
+    /* ── Send Bar ─────────────────────────────────── */
+    .send-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .send-bar input[type="text"] {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .send-bar select { width: 85px; }
+
+    /* ── Stat Cards ───────────────────────────────── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .stat-card {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 2px;
+    }
+
+    .stat-value {
+      font-size: 1rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Badges ───────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .badge-green { background: rgba(74,222,128,0.15); color: var(--green); }
+    .badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); }
+    .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+    .badge-blue { background: var(--accent-glow); color: var(--accent); }
+
+    /* ── Unsupported ──────────────────────────────── */
+    #unsupported {
+      display: none;
+      padding: 60px 24px;
+      text-align: center;
+    }
+    #unsupported h2 { color: var(--red); margin-bottom: 12px; font-size: 1.3rem; }
+    #unsupported p { color: var(--text-dim); max-width: 420px; margin: 0 auto; line-height: 1.5; }
+
+    /* ── Spinner ──────────────────────────────────── */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2.5px solid rgba(255,255,255,0.2);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ───────────────────────────────── */
+    @media (max-width: 480px) {
+      .form-row { flex-direction: column; align-items: stretch; }
+      .file-entry { flex-direction: column; align-items: stretch; }
+      .file-entry input[type="text"] { width: 100%; }
+      .stat-row { grid-template-columns: repeat(2, 1fr); }
+      .btn { padding: 9px 16px; font-size: 0.82rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="16" height="16" rx="2"/>
+        <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
+        <path d="M9 12h6M12 9v6" stroke-width="1.5"/>
+      </svg>
+      <h1>ESP Flash Tool</h1>
+    </div>
+    <div class="header-right">
+      <div class="header-status">
+        <span id="statusText">Disconnected</span>
+        <div class="connection-dot disconnected" id="statusDot"></div>
+      </div>
+      <button id="installBtn">Install</button>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="flash">Flash</button>
+    <button class="tab-btn" data-tab="monitor">Monitor</button>
+  </div>
+
+  <!-- Unsupported -->
+  <div id="unsupported">
+    <h2>Browser Not Supported</h2>
+    <p>This app requires the Web Serial API. Please use Google Chrome, Microsoft Edge (v89+), or Opera.</p>
+  </div>
+
+  <div class="main" id="mainContent">
+
+    <!-- ═══ FLASH TAB ═══ -->
+    <div class="tab-panel active" id="panel-flash">
+
+      <!-- Alert -->
+      <div class="alert alert-error" id="alertBox">
+        <span id="alertMsg"></span>
+        <button class="close-alert" onclick="this.parentElement.style.display='none'">&times;</button>
+      </div>
+
+      <!-- Connection -->
+      <div class="section open" id="secConnect">
+        <div class="section-header" onclick="toggleSection('secConnect')">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Connection
+          </div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-content">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="baudrate">Baud Rate</label>
+              <select id="baudrate">
+                <option value="921600">921600</option>
+                <option value="460800">460800</option>
+                <option value="230400">230400</option>
+                <option value="115200" selected>115200</option>
+              </select>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="debugLog">
+              <label for="debugLog">Debug</label>
+            </div>
+          </div>
+          <div class="btn-group" style="margin-top:12px">
+            <button class="btn btn-primary btn-sm" id="btnConnect">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              Connect
+            </button>
+            <button class="btn btn-danger btn-sm" id="btnDisconnect" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Disconnect
+            </button>
+            <button class="btn btn-outline btn-xs" id="btnCopyTrace" disabled>Copy Trace</button>
+          </div>
+          <div class="chip-info" id="chipInfo"></div>
+        </div></div>
+      </div>
+
+      <!-- Firmware Files -->
+      <div class="section open" id="secFiles">
+        <div class="section-header" onclick="toggleSection('secFiles')">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+            Firmware Files
+          </div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-content">
+          <div class="file-list" id="fileList"></div>
+          <div style="margin-top:10px">
+            <button class="btn btn-outline btn-xs" id="btnAddFile">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add File
+            </button>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- Flash Options -->
+      <div class="section open" id="secOptions">
+        <div class="section-header" onclick="toggleSection('secOptions')">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Flash Options
+          </div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-content">
+          <div class="flash-options">
+            <div class="form-group">
+              <label for="flashMode">Mode</label>
+              <select id="flashMode">
+                <option value="keep" selected>keep</option>
+                <option value="dio">DIO</option>
+                <option value="qio">QIO</option>
+                <option value="dout">DOUT</option>
+                <option value="qout">QOUT</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="flashFreq">Frequency</label>
+              <select id="flashFreq">
+                <option value="keep">keep</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="flashSize">Size</label>
+              <select id="flashSize">
+                <option value="detect">detect</option>
+                <option value="keep" selected>keep</option>
+              </select>
+            </div>
+          </div>
+          <div class="btn-group" style="margin-top:14px">
+            <button class="btn btn-primary btn-sm" id="btnProgram" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Flash
+            </button>
+            <button class="btn btn-danger btn-sm" id="btnErase" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              Erase
+            </button>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- Output Log -->
+      <div class="section open" id="secLog">
+        <div class="section-header" onclick="toggleSection('secLog')">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            Output Log
+          </div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-content">
+          <div class="terminal-wrap" id="terminalContainer"></div>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- ═══ MONITOR TAB ═══ -->
+    <div class="tab-panel" id="panel-monitor">
+
+      <!-- Monitor Controls -->
+      <div class="section open" id="secMonCtrl">
+        <div class="section-header" onclick="toggleSection('secMonCtrl')">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Serial Monitor
+          </div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-content">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="monBaud">Baud Rate</label>
+              <select id="monBaud">
+                <option value="921600">921600</option>
+                <option value="460800">460800</option>
+                <option value="230400">230400</option>
+                <option value="115200" selected>115200</option>
+                <option value="74880">74880</option>
+                <option value="57600">57600</option>
+                <option value="38400">38400</option>
+                <option value="19200">19200</option>
+                <option value="9600">9600</option>
+              </select>
+            </div>
+          </div>
+          <div class="btn-group" style="margin-top:12px">
+            <button class="btn btn-success btn-sm" id="btnMonStart">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Start
+            </button>
+            <button class="btn btn-danger btn-sm" id="btnMonStop" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="6" y="6" width="12" height="12"/></svg>
+              Stop
+            </button>
+            <button class="btn btn-warning btn-sm" id="btnMonReset" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+              Reset
+            </button>
+            <button class="btn btn-outline btn-xs" id="btnMonClear">Clear</button>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- Monitor Terminal -->
+      <div class="section open" id="secMonTerm">
+        <div class="section-header" onclick="toggleSection('secMonTerm')">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            Output
+          </div>
+          <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="section-body"><div class="section-content">
+          <div class="terminal-wrap" id="monTerminalContainer"></div>
+          <div class="send-bar">
+            <input type="text" id="monSendInput" placeholder="Send command...">
+            <select id="monLineEnding">
+              <option value="\r\n">CR+LF</option>
+              <option value="\n">LF</option>
+              <option value="\r">CR</option>
+              <option value="">None</option>
+            </select>
+            <button class="btn btn-primary btn-xs" id="btnMonSend" disabled>Send</button>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.js"></script>
+
+  <script>
+    /* ── Section toggle ──────────────────────────── */
+    function toggleSection(id) {
+      document.getElementById(id).classList.toggle('open');
+    }
+
+    /* ── Toast ────────────────────────────────────── */
+    function showToast(msg, type) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast' + (type === 'success' ? ' success' : '');
+      t.classList.add('visible');
+      setTimeout(() => t.classList.remove('visible'), 3500);
+    }
+  </script>
+
+  <script type="module">
+    import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.5.7/bundle.js';
+
+    /* ── Check Web Serial ────────────────────────── */
+    if (!navigator.serial) {
+      document.getElementById('unsupported').style.display = 'block';
+      document.getElementById('mainContent').style.display = 'none';
+    }
+
+    /* ── PWA Install ─────────────────────────────── */
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const ib = document.getElementById('installBtn');
+      ib.style.display = 'inline-flex';
+      ib.onclick = async () => {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        ib.style.display = 'none';
+      };
+    });
+
+    /* ── Service Worker ──────────────────────────── */
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+
+    /* ── DOM ──────────────────────────────────────── */
+    const $ = (id) => document.getElementById(id);
+
+    const baudrate     = $('baudrate');
+    const btnConnect   = $('btnConnect');
+    const btnDisconnect = $('btnDisconnect');
+    const btnProgram   = $('btnProgram');
+    const btnErase     = $('btnErase');
+    const btnCopyTrace = $('btnCopyTrace');
+    const btnAddFile   = $('btnAddFile');
+    const debugLog     = $('debugLog');
+    const chipInfoDiv  = $('chipInfo');
+    const flashMode    = $('flashMode');
+    const flashFreq    = $('flashFreq');
+    const flashSize    = $('flashSize');
+    const alertBox     = $('alertBox');
+    const alertMsg     = $('alertMsg');
+    const fileList     = $('fileList');
+    const statusDot    = $('statusDot');
+    const statusText   = $('statusText');
+
+    const monBaud      = $('monBaud');
+    const btnMonStart  = $('btnMonStart');
+    const btnMonStop   = $('btnMonStop');
+    const btnMonReset  = $('btnMonReset');
+    const btnMonClear  = $('btnMonClear');
+    const btnMonSend   = $('btnMonSend');
+    const monSendInput = $('monSendInput');
+    const monLineEnding = $('monLineEnding');
+
+    /* ── Terminal (Flash) ────────────────────────── */
+    const term = new Terminal({
+      cols: 100, rows: 20,
+      theme: { background: '#000', foreground: '#f4f4f5', cursor: '#38bdf8', selectionBackground: '#3f3f46' },
+      fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace",
+      fontSize: 13, scrollback: 5000,
+    });
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open($('terminalContainer'));
+    fitAddon.fit();
+
+    /* ── Terminal (Monitor) ──────────────────────── */
+    const monTerm = new Terminal({
+      cols: 100, rows: 24,
+      theme: { background: '#000', foreground: '#f4f4f5', cursor: '#38bdf8', selectionBackground: '#3f3f46' },
+      fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace",
+      fontSize: 13, scrollback: 10000,
+    });
+    const monFit = new FitAddon.FitAddon();
+    monTerm.loadAddon(monFit);
+    monTerm.open($('monTerminalContainer'));
+    monFit.fit();
+
+    window.addEventListener('resize', () => { fitAddon.fit(); monFit.fit(); });
+
+    /* ── Tabs ─────────────────────────────────────── */
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        $('panel-' + btn.dataset.tab).classList.add('active');
+        setTimeout(() => { fitAddon.fit(); monFit.fit(); }, 60);
+      });
+    });
+
+    /* ── State ────────────────────────────────────── */
+    let device = null, transport = null, esploader = null, chip = null, fileEntryId = 0;
+
+    const espLoaderTerminal = {
+      clean()         { term.clear(); },
+      writeLine(data) { term.writeln(data); },
+      write(data)     { term.write(data); },
+    };
+
+    /* ── Status ───────────────────────────────────── */
+    function setStatus(state, text) {
+      statusDot.className = 'connection-dot ' + state;
+      statusText.textContent = text || (state === 'connected' ? 'Connected' : 'Disconnected');
+    }
+
+    function showAlert(msg, type = 'error') {
+      alertBox.className = `alert alert-${type}`;
+      alertMsg.textContent = msg;
+      alertBox.style.display = 'flex';
+    }
+
+    /* ── File Entries ─────────────────────────────── */
+    function addFileEntry() {
+      fileEntryId++;
+      const div = document.createElement('div');
+      div.className = 'file-entry';
+      div.innerHTML = `
+        <input type="text" value="0x10000" placeholder="0x10000" title="Flash address (hex)">
+        <button class="btn btn-outline btn-xs pick-file-btn">Choose File</button>
+        <span class="file-name">No file selected</span>
+        <button class="btn btn-danger btn-xs remove-file-btn" style="padding:4px 8px">&times;</button>
+        <div class="file-progress"><div class="bar"></div></div>
+        <input type="file" accept=".bin,.img,.elf,.hex">
+      `;
+
+      const fi = div.querySelector('input[type="file"]');
+      const nm = div.querySelector('.file-name');
+      div.querySelector('.pick-file-btn').onclick = () => fi.click();
+      fi.onchange = (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        nm.textContent = f.name;
+        nm.classList.add('has-file');
+        const r = new FileReader();
+        r.onload = (ev) => { fi._data = new Uint8Array(ev.target.result); };
+        r.readAsArrayBuffer(f);
+      };
+      div.querySelector('.remove-file-btn').onclick = () => div.remove();
+      fileList.appendChild(div);
+    }
+
+    btnAddFile.addEventListener('click', addFileEntry);
+    addFileEntry();
+
+    /* ── Populate dropdowns from chip ─────────────── */
+    function populateFlashDropdowns() {
+      if (!esploader?.chip) return;
+
+      flashFreq.innerHTML = '<option value="keep">keep</option>';
+      Object.keys(esploader.chip.FLASH_FREQUENCY || {}).sort().forEach(f => {
+        const o = document.createElement('option'); o.value = f; o.textContent = f;
+        flashFreq.appendChild(o);
+      });
+
+      flashSize.innerHTML = '<option value="detect">detect</option><option value="keep" selected>keep</option>';
+      const order = ['256KB','512KB','1MB','2MB','4MB','8MB','16MB','32MB','64MB','128MB'];
+      Object.keys(esploader.chip.FLASH_SIZES || {}).sort((a,b) => order.indexOf(a) - order.indexOf(b)).forEach(s => {
+        const o = document.createElement('option'); o.value = s; o.textContent = s;
+        flashSize.appendChild(o);
+      });
+    }
+
+    /* ── Connect ──────────────────────────────────── */
+    btnConnect.addEventListener('click', async () => {
+      try {
+        setStatus('connecting', 'Connecting...');
+        if (!device) {
+          device = await navigator.serial.requestPort({});
+          transport = new Transport(device, true);
+        }
+        esploader = new ESPLoader({
+          transport,
+          baudrate: parseInt(baudrate.value),
+          terminal: espLoaderTerminal,
+          debugLogging: debugLog.checked,
+        });
+        chip = await esploader.main();
+        populateFlashDropdowns();
+
+        chipInfoDiv.textContent = `${chip}  \u2022  ${transport.getInfo()}`;
+        chipInfoDiv.classList.add('visible');
+
+        setStatus('connected', chip);
+        btnConnect.disabled = true;
+        btnDisconnect.disabled = false;
+        btnProgram.disabled = false;
+        btnErase.disabled = false;
+        btnCopyTrace.disabled = false;
+        alertBox.style.display = 'none';
+      } catch (e) {
+        console.error(e);
+        term.writeln(`\x1b[31mError: ${e.message}\x1b[0m`);
+        showAlert(e.message);
+        setStatus('disconnected');
+      }
+    });
+
+    /* ── Disconnect ───────────────────────────────── */
+    btnDisconnect.addEventListener('click', async () => {
+      try { if (transport) await transport.disconnect(); } catch(e) {}
+      term.reset();
+      cleanUp();
+    });
+
+    function cleanUp() {
+      device = null; transport = null; esploader = null; chip = null;
+      setStatus('disconnected');
+      chipInfoDiv.classList.remove('visible');
+      btnConnect.disabled = false;
+      btnDisconnect.disabled = true;
+      btnProgram.disabled = true;
+      btnErase.disabled = true;
+      btnCopyTrace.disabled = true;
+    }
+
+    /* ── Erase ────────────────────────────────────── */
+    btnErase.addEventListener('click', async () => {
+      if (!esploader) return;
+      btnErase.disabled = true;
+      try {
+        term.writeln('\x1b[33mErasing flash... this may take a while.\x1b[0m');
+        await esploader.eraseFlash();
+        term.writeln('\x1b[32mFlash erased successfully!\x1b[0m');
+        showToast('Flash erased!', 'success');
+      } catch (e) {
+        console.error(e);
+        term.writeln(`\x1b[31mErase error: ${e.message}\x1b[0m`);
+        showToast(e.message);
+      } finally {
+        btnErase.disabled = false;
+      }
+    });
+
+    /* ── Copy Trace ───────────────────────────────── */
+    btnCopyTrace.addEventListener('click', () => { if (transport) transport.returnTrace(); });
+
+    /* ── Flash ────────────────────────────────────── */
+    btnProgram.addEventListener('click', async () => {
+      if (!esploader) return;
+
+      const entries = fileList.querySelectorAll('.file-entry');
+      const fileArray = [], progressBars = [];
+
+      for (const entry of entries) {
+        const addr = parseInt(entry.querySelector('input[type="text"]').value);
+        const fi = entry.querySelector('input[type="file"]');
+        if (isNaN(addr)) { showAlert(`Invalid address`); return; }
+        if (!fi._data) { showAlert('Select a file for each entry.'); return; }
+        fileArray.push({ data: fi._data, address: addr });
+        progressBars.push({
+          div: entry.querySelector('.file-progress'),
+          bar: entry.querySelector('.file-progress .bar'),
+        });
+      }
+
+      if (!fileArray.length) { showAlert('Add at least one firmware file.'); return; }
+
+      alertBox.style.display = 'none';
+      btnProgram.disabled = true;
+      btnErase.disabled = true;
+      progressBars.forEach(p => { p.div.style.display = 'block'; p.bar.style.width = '0%'; });
+
+      try {
+        await esploader.writeFlash({
+          fileArray,
+          eraseAll: false,
+          compress: true,
+          flashMode: flashMode.value,
+          flashFreq: flashFreq.value,
+          flashSize: flashSize.value,
+          reportProgress: (idx, written, total) => {
+            if (progressBars[idx]) progressBars[idx].bar.style.width = Math.round((written/total)*100) + '%';
+          },
+          calculateMD5Hash: (image) => {
+            const s = Array.from(image, b => String.fromCharCode(b)).join('');
+            return CryptoJS.MD5(CryptoJS.enc.Latin1.parse(s)).toString();
+          },
+        });
+        term.writeln('\x1b[32mFlash complete!\x1b[0m');
+        showToast('Firmware flashed!', 'success');
+      } catch (e) {
+        console.error(e);
+        term.writeln(`\x1b[31mFlash error: ${e.message}\x1b[0m`);
+        showToast(e.message);
+      } finally {
+        btnProgram.disabled = false;
+        btnErase.disabled = false;
+        progressBars.forEach(p => { p.div.style.display = 'none'; });
+      }
+    });
+
+    /* ═══ SERIAL MONITOR ═══════════════════════════ */
+    let monDevice = null, monTransport = null, monRunning = false;
+
+    btnMonStart.addEventListener('click', async () => {
+      try {
+        setStatus('connecting', 'Connecting...');
+        if (!monDevice) {
+          monDevice = await navigator.serial.requestPort({});
+          monTransport = new Transport(monDevice, true);
+        }
+        await monTransport.connect(parseInt(monBaud.value));
+        monRunning = true;
+        setStatus('connected', 'Monitor');
+        btnMonStart.disabled = true;
+        btnMonStop.disabled = false;
+        btnMonReset.disabled = false;
+        btnMonSend.disabled = false;
+        readLoop();
+      } catch (e) {
+        console.error(e);
+        monTerm.writeln(`\x1b[31mError: ${e.message}\x1b[0m`);
+        setStatus('disconnected');
+      }
+    });
+
+    async function readLoop() {
+      try {
+        while (monRunning && monTransport) {
+          const v = await monTransport.rawRead();
+          if (!v || !v.length) break;
+          monTerm.write(v);
+        }
+      } catch (e) {
+        if (monRunning) monTerm.writeln(`\x1b[31m[Error] ${e.message}\x1b[0m`);
+      }
+    }
+
+    btnMonStop.addEventListener('click', async () => {
+      monRunning = false;
+      try {
+        if (monTransport) { await monTransport.disconnect(); await monTransport.waitForUnlock(1500); }
+      } catch(e) {}
+      monDevice = null; monTransport = null;
+      setStatus('disconnected');
+      btnMonStart.disabled = false;
+      btnMonStop.disabled = true;
+      btnMonReset.disabled = true;
+      btnMonSend.disabled = true;
+    });
+
+    btnMonReset.addEventListener('click', async () => {
+      if (!monTransport) return;
+      try {
+        await monTransport.setDTR(false);
+        await new Promise(r => setTimeout(r, 100));
+        await monTransport.setDTR(true);
+      } catch (e) {
+        monTerm.writeln(`\x1b[31mReset error: ${e.message}\x1b[0m`);
+      }
+    });
+
+    btnMonClear.addEventListener('click', () => monTerm.clear());
+
+    async function sendData() {
+      if (!monTransport || !monRunning) return;
+      const text = monSendInput.value;
+      if (!text) return;
+      const ending = monLineEnding.value.replace(/\\r/g, '\r').replace(/\\n/g, '\n');
+      try {
+        await monTransport.write(new TextEncoder().encode(text + ending));
+        monSendInput.value = '';
+      } catch (e) {
+        monTerm.writeln(`\x1b[31mSend error: ${e.message}\x1b[0m`);
+      }
+    }
+
+    btnMonSend.addEventListener('click', sendData);
+    monSendInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendData(); });
+
+    /* ── Terminal keyboard input → serial ─────────── */
+    monTerm.onData(async (data) => {
+      if (!monTransport || !monRunning) return;
+      try { await monTransport.write(new TextEncoder().encode(data)); } catch(e) {}
+    });
+  </script>
+</body>
+</html>
