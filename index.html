@@ -11,6 +11,7 @@
   <link rel="icon" href="icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>ESP Flash Tool</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,15 +23,15 @@
       --border: #3f3f46;
       --text: #f4f4f5;
       --text-dim: #a1a1aa;
-      --accent: #38bdf8;
-      --accent-glow: rgba(56, 189, 248, 0.15);
+      --accent: #f59e0b;
+      --accent-glow: rgba(245, 158, 11, 0.15);
       --green: #4ade80;
       --yellow: #fbbf24;
       --red: #f87171;
       --orange: #fb923c;
       --radius: 12px;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+      --mono: 'JetBrains Mono', monospace;
     }
 
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -41,7 +42,7 @@
     html { font-size: 16px; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100dvh;
@@ -73,9 +74,11 @@
     .header-title svg { width: 28px; height: 28px; }
 
     .header-title h1 {
+      font-family: var(--mono);
       font-size: 1.1rem;
       font-weight: 700;
       letter-spacing: -0.02em;
+      color: var(--accent);
     }
 
     .header-right {
@@ -118,12 +121,12 @@
       font-weight: 600;
       background: var(--accent-glow);
       color: var(--accent);
-      border: 1.5px solid rgba(56, 189, 248, 0.3);
+      border: 1.5px solid rgba(245, 158, 11, 0.3);
       cursor: pointer;
       transition: all 0.2s;
       -webkit-tap-highlight-color: transparent;
     }
-    #installBtn:hover { background: rgba(56, 189, 248, 0.25); }
+    #installBtn:hover { background: rgba(245, 158, 11, 0.25); }
 
     /* ── Tabs ─────────────────────────────────────── */
     .tab-bar {
@@ -190,6 +193,7 @@
       display: flex;
       align-items: center;
       gap: 7px;
+      font-family: var(--mono);
       font-size: 0.82rem;
       font-weight: 600;
     }
@@ -222,12 +226,12 @@
       padding: 10px 20px;
       border-radius: 999px;
       border: none;
+      font-family: var(--mono);
       font-size: 0.88rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
       -webkit-tap-highlight-color: transparent;
-      font-family: inherit;
     }
 
     .btn svg { width: 16px; height: 16px; }
@@ -273,6 +277,7 @@
     }
 
     .form-group label {
+      font-family: var(--mono);
       font-size: 0.7rem;
       font-weight: 600;
       text-transform: uppercase;
@@ -320,7 +325,7 @@
       margin-top: 12px;
       padding: 10px 14px;
       background: var(--accent-glow);
-      border: 1px solid rgba(56,189,248,0.2);
+      border: 1px solid rgba(245,158,11,0.2);
       border-radius: 8px;
       font-size: 0.82rem;
       color: var(--accent);
@@ -368,7 +373,7 @@
 
     .file-progress .bar {
       height: 100%;
-      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      background: linear-gradient(90deg, var(--accent), #fbbf24);
       border-radius: 2px;
       width: 0%;
       transition: width 0.2s;
@@ -474,6 +479,7 @@
     }
 
     .stat-label {
+      font-family: var(--mono);
       font-size: 0.65rem;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -494,6 +500,7 @@
       gap: 4px;
       padding: 2px 8px;
       border-radius: 999px;
+      font-family: var(--mono);
       font-size: 0.7rem;
       font-weight: 600;
     }
@@ -857,8 +864,8 @@
     /* ── Terminal (Flash) ────────────────────────── */
     const term = new Terminal({
       cols: 100, rows: 20,
-      theme: { background: '#000', foreground: '#f4f4f5', cursor: '#38bdf8', selectionBackground: '#3f3f46' },
-      fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace",
+      theme: { background: '#000', foreground: '#f4f4f5', cursor: '#f59e0b', selectionBackground: '#3f3f46' },
+      fontFamily: "'JetBrains Mono', monospace",
       fontSize: 13, scrollback: 5000,
     });
     const fitAddon = new FitAddon.FitAddon();
@@ -869,8 +876,8 @@
     /* ── Terminal (Monitor) ──────────────────────── */
     const monTerm = new Terminal({
       cols: 100, rows: 24,
-      theme: { background: '#000', foreground: '#f4f4f5', cursor: '#38bdf8', selectionBackground: '#3f3f46' },
-      fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace",
+      theme: { background: '#000', foreground: '#f4f4f5', cursor: '#f59e0b', selectionBackground: '#3f3f46' },
+      fontFamily: "'JetBrains Mono', monospace",
       fontSize: 13, scrollback: 10000,
     });
     const monFit = new FitAddon.FitAddon();
