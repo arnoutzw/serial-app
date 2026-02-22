@@ -50,7 +50,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Header ──────────────────────────────────── */
+    /* ââ Header ââââââââââââââââââââââââââââââââââââ */
     .header {
       position: sticky;
       top: 0;
@@ -128,7 +128,7 @@
     }
     #installBtn:hover { background: rgba(245, 158, 11, 0.25); }
 
-    /* ── Tabs ─────────────────────────────────────── */
+    /* ââ Tabs âââââââââââââââââââââââââââââââââââââââ */
     .tab-bar {
       display: flex;
       background: var(--surface);
@@ -154,7 +154,7 @@
     .tab-btn:hover { color: var(--text); }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-    /* ── Main ─────────────────────────────────────── */
+    /* ââ Main âââââââââââââââââââââââââââââââââââââââ */
     .main {
       max-width: 900px;
       margin: 0 auto;
@@ -169,7 +169,7 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Section (collapsible card) ───────────────── */
+    /* ââ Section (collapsible card) âââââââââââââââââ */
     .section {
       background: var(--surface);
       border-radius: var(--radius);
@@ -218,7 +218,7 @@
 
     .section-content { padding: 0 14px 14px; }
 
-    /* ── Buttons ──────────────────────────────────── */
+    /* ââ Buttons ââââââââââââââââââââââââââââââââââââ */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -262,7 +262,7 @@
 
     .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
 
-    /* ── Form Controls ────────────────────────────── */
+    /* ââ Form Controls ââââââââââââââââââââââââââââââ */
     .form-row {
       display: flex;
       gap: 12px;
@@ -319,7 +319,7 @@
       cursor: pointer;
     }
 
-    /* ── Chip Info Badge ──────────────────────────── */
+    /* ââ Chip Info Badge ââââââââââââââââââââââââââââ */
     .chip-info {
       display: none;
       margin-top: 12px;
@@ -333,7 +333,7 @@
     }
     .chip-info.visible { display: block; }
 
-    /* ── File Entries ─────────────────────────────── */
+    /* ââ File Entries âââââââââââââââââââââââââââââââ */
     .file-list { display: flex; flex-direction: column; gap: 8px; }
 
     .file-entry {
@@ -379,7 +379,7 @@
       transition: width 0.2s;
     }
 
-    /* ── Flash Options ────────────────────────────── */
+    /* ââ Flash Options ââââââââââââââââââââââââââââââ */
     .flash-options {
       display: flex;
       gap: 12px;
@@ -387,7 +387,7 @@
       padding-top: 6px;
     }
 
-    /* ── Terminal ─────────────────────────────────── */
+    /* ââ Terminal âââââââââââââââââââââââââââââââââââ */
     .terminal-wrap {
       background: #000;
       border: 1px solid var(--surface2);
@@ -396,7 +396,7 @@
       overflow: hidden;
     }
 
-    /* ── Alert / Toast ────────────────────────────── */
+    /* ââ Alert / Toast ââââââââââââââââââââââââââââââ */
     .alert {
       padding: 10px 14px;
       border-radius: 8px;
@@ -448,7 +448,7 @@
     .toast.visible { transform: translateX(-50%) translateY(0); }
     .toast.success { background: var(--green); color: var(--bg); }
 
-    /* ── Send Bar ─────────────────────────────────── */
+    /* ââ Send Bar âââââââââââââââââââââââââââââââââââ */
     .send-bar {
       display: flex;
       gap: 8px;
@@ -463,7 +463,7 @@
 
     .send-bar select { width: 85px; }
 
-    /* ── Stat Cards ───────────────────────────────── */
+    /* ââ Stat Cards âââââââââââââââââââââââââââââââââ */
     .stat-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -493,7 +493,7 @@
       font-variant-numeric: tabular-nums;
     }
 
-    /* ── Badges ───────────────────────────────────── */
+    /* ââ Badges âââââââââââââââââââââââââââââââââââââ */
     .badge {
       display: inline-flex;
       align-items: center;
@@ -509,7 +509,7 @@
     .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
     .badge-blue { background: var(--accent-glow); color: var(--accent); }
 
-    /* ── Unsupported ──────────────────────────────── */
+    /* ââ Unsupported ââââââââââââââââââââââââââââââââ */
     #unsupported {
       display: none;
       padding: 60px 24px;
@@ -518,7 +518,7 @@
     #unsupported h2 { color: var(--red); margin-bottom: 12px; font-size: 1.3rem; }
     #unsupported p { color: var(--text-dim); max-width: 420px; margin: 0 auto; line-height: 1.5; }
 
-    /* ── Spinner ──────────────────────────────────── */
+    /* ââ Spinner ââââââââââââââââââââââââââââââââââââ */
     .spinner {
       width: 16px; height: 16px;
       border: 2.5px solid rgba(255,255,255,0.2);
@@ -528,7 +528,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Responsive ───────────────────────────────── */
+    /* ââ Responsive âââââââââââââââââââââââââââââââââ */
     @media (max-width: 480px) {
       .form-row { flex-direction: column; align-items: stretch; }
       .file-entry { flex-direction: column; align-items: stretch; }
@@ -573,7 +573,7 @@
 
   <div class="main" id="mainContent">
 
-    <!-- ═══ FLASH TAB ═══ -->
+    <!-- âââ FLASH TAB âââ -->
     <div class="tab-panel active" id="panel-flash">
 
       <!-- Alert -->
@@ -705,7 +705,7 @@
       </div>
     </div>
 
-    <!-- ═══ MONITOR TAB ═══ -->
+    <!-- âââ MONITOR TAB âââ -->
     <div class="tab-panel" id="panel-monitor">
 
       <!-- Monitor Controls -->
@@ -787,12 +787,12 @@
   <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.js"></script>
 
   <script>
-    /* ── Section toggle ──────────────────────────── */
+    /* ââ Section toggle ââââââââââââââââââââââââââââ */
     function toggleSection(id) {
       document.getElementById(id).classList.toggle('open');
     }
 
-    /* ── Toast ────────────────────────────────────── */
+    /* ââ Toast ââââââââââââââââââââââââââââââââââââââ */
     function showToast(msg, type) {
       const t = document.getElementById('toast');
       t.textContent = msg;
@@ -805,13 +805,13 @@
   <script type="module">
     import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.5.7/bundle.js';
 
-    /* ── Check Web Serial ────────────────────────── */
+    /* ââ Check Web Serial ââââââââââââââââââââââââââ */
     if (!navigator.serial) {
       document.getElementById('unsupported').style.display = 'block';
       document.getElementById('mainContent').style.display = 'none';
     }
 
-    /* ── PWA Install ─────────────────────────────── */
+    /* ââ PWA Install âââââââââââââââââââââââââââââââ */
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -826,12 +826,12 @@
       };
     });
 
-    /* ── Service Worker ──────────────────────────── */
+    /* ââ Service Worker ââââââââââââââââââââââââââââ */
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
 
-    /* ── DOM ──────────────────────────────────────── */
+    /* ââ DOM ââââââââââââââââââââââââââââââââââââââââ */
     const $ = (id) => document.getElementById(id);
 
     const baudrate     = $('baudrate');
@@ -861,7 +861,7 @@
     const monSendInput = $('monSendInput');
     const monLineEnding = $('monLineEnding');
 
-    /* ── Terminal (Flash) ────────────────────────── */
+    /* ââ Terminal (Flash) ââââââââââââââââââââââââââ */
     const term = new Terminal({
       cols: 100, rows: 20,
       theme: { background: '#000', foreground: '#f4f4f5', cursor: '#f59e0b', selectionBackground: '#3f3f46' },
@@ -873,7 +873,7 @@
     term.open($('terminalContainer'));
     fitAddon.fit();
 
-    /* ── Terminal (Monitor) ──────────────────────── */
+    /* ââ Terminal (Monitor) ââââââââââââââââââââââââ */
     const monTerm = new Terminal({
       cols: 100, rows: 24,
       theme: { background: '#000', foreground: '#f4f4f5', cursor: '#f59e0b', selectionBackground: '#3f3f46' },
@@ -887,7 +887,7 @@
 
     window.addEventListener('resize', () => { fitAddon.fit(); monFit.fit(); });
 
-    /* ── Tabs ─────────────────────────────────────── */
+    /* ââ Tabs âââââââââââââââââââââââââââââââââââââââ */
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -898,7 +898,7 @@
       });
     });
 
-    /* ── State ────────────────────────────────────── */
+    /* ââ State ââââââââââââââââââââââââââââââââââââââ */
     let device = null, transport = null, esploader = null, chip = null, fileEntryId = 0;
 
     const espLoaderTerminal = {
@@ -907,7 +907,7 @@
       write(data)     { term.write(data); },
     };
 
-    /* ── Status ───────────────────────────────────── */
+    /* ââ Status âââââââââââââââââââââââââââââââââââââ */
     function setStatus(state, text) {
       statusDot.className = 'connection-dot ' + state;
       statusText.textContent = text || (state === 'connected' ? 'Connected' : 'Disconnected');
@@ -919,7 +919,7 @@
       alertBox.style.display = 'flex';
     }
 
-    /* ── File Entries ─────────────────────────────── */
+    /* ââ File Entries âââââââââââââââââââââââââââââââ */
     function addFileEntry() {
       fileEntryId++;
       const div = document.createElement('div');
@@ -952,7 +952,7 @@
     btnAddFile.addEventListener('click', addFileEntry);
     addFileEntry();
 
-    /* ── Populate dropdowns from chip ─────────────── */
+    /* ââ Populate dropdowns from chip âââââââââââââââ */
     function populateFlashDropdowns() {
       if (!esploader?.chip) return;
 
@@ -970,7 +970,7 @@
       });
     }
 
-    /* ── Connect ──────────────────────────────────── */
+    /* ââ Connect ââââââââââââââââââââââââââââââââââââ */
     btnConnect.addEventListener('click', async () => {
       try {
         setStatus('connecting', 'Connecting...');
@@ -1005,7 +1005,7 @@
       }
     });
 
-    /* ── Disconnect ───────────────────────────────── */
+    /* ââ Disconnect âââââââââââââââââââââââââââââââââ */
     btnDisconnect.addEventListener('click', async () => {
       try { if (transport) await transport.disconnect(); } catch(e) {}
       term.reset();
@@ -1023,7 +1023,7 @@
       btnCopyTrace.disabled = true;
     }
 
-    /* ── Erase ────────────────────────────────────── */
+    /* ââ Erase ââââââââââââââââââââââââââââââââââââââ */
     btnErase.addEventListener('click', async () => {
       if (!esploader) return;
       btnErase.disabled = true;
@@ -1041,10 +1041,10 @@
       }
     });
 
-    /* ── Copy Trace ───────────────────────────────── */
+    /* ââ Copy Trace âââââââââââââââââââââââââââââââââ */
     btnCopyTrace.addEventListener('click', () => { if (transport) transport.returnTrace(); });
 
-    /* ── Flash ────────────────────────────────────── */
+    /* ââ Flash ââââââââââââââââââââââââââââââââââââââ */
     btnProgram.addEventListener('click', async () => {
       if (!esploader) return;
 
@@ -1099,7 +1099,7 @@
       }
     });
 
-    /* ═══ SERIAL MONITOR ═══════════════════════════ */
+    /* âââ SERIAL MONITOR âââââââââââââââââââââââââââ */
     let monDevice = null, monTransport = null, monRunning = false;
 
     btnMonStart.addEventListener('click', async () => {
@@ -1178,11 +1178,35 @@
     btnMonSend.addEventListener('click', sendData);
     monSendInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendData(); });
 
-    /* ── Terminal keyboard input → serial ─────────── */
+    /* ââ Terminal keyboard input â serial âââââââââââ */
     monTerm.onData(async (data) => {
       if (!monTransport || !monRunning) return;
       try { await monTransport.write(new TextEncoder().encode(data)); } catch(e) {}
     });
   </script>
+
+<script>
+// Theme change observer - signals to parent portal
+(function() {
+  var lastTheme = '';
+  var observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      if (m.attributeName === 'class' || m.attributeName === 'data-theme') {
+        var el = document.documentElement;
+        var isDark = el.classList.contains('dark') || el.getAttribute('data-theme') === 'dark';
+        var newTheme = isDark ? 'dark' : 'asml';
+        if (newTheme !== lastTheme) {
+          lastTheme = newTheme;
+          if (window.parent !== window) {
+            try { window.parent.postMessage({ type: 'theme-change', theme: newTheme }, '*'); } catch(e) {}
+          }
+        }
+      }
+    });
+  });
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+  if (document.body) observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+})();
+</script>
 </body>
 </html>
