@@ -42,45 +42,16 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-/* Fetch: stale-while-revalidate for CDN, cache-first for local */
+/* Fetch — network-first, cache fallback for offline */
 self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
-
-  /* Skip non-GET requests */
   if (event.request.method !== 'GET') return;
-
-  /* For CDN resources: cache first, then network update */
-  if (CDN_URLS.some((cdn) => url.startsWith(cdn.split('?')[0]))) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then((cache) =>
-        cache.match(event.request).then((cached) => {
-          const fetchPromise = fetch(event.request)
-            .then((response) => {
-              if (response.ok) {
-                cache.put(event.request, response.clone());
-              }
-              return response;
-            })
-            .catch(() => cached);
-
-          return cached || fetchPromise;
-        })
-      )
-    );
-    return;
-  }
-
-  /* For local resources: cache first */
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      });
-    })
+    fetch(event.request).then((response) => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      }
+      return response;
+    }).catch(() => caches.match(event.request))
   );
 });
