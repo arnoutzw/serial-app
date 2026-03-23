@@ -1,0 +1,335 @@
+# ESP Flash Tool (Serial Terminal) — UML Diagrams
+# Web Serial API app for flashing ESP microcontrollers and serial monitoring
+
+# ============================================================
+# CLASSES
+# ============================================================
+class-diagram: {
+  label: "Class Diagram"
+
+  ESPLoader: ESPLoader {
+    shape: class
+    transport: Transport
+    baudrate: int
+    terminal: EspLoaderTerminal
+    debugLogging: boolean
+
+    main()
+    writeFlash(opts)
+    eraseFlash()
+  }
+
+  Transport: Transport {
+    shape: class
+    device: SerialPort
+    tracing: boolean
+
+    connect(baud)
+    disconnect()
+    rawRead()
+    rawWrite(data)
+    getInfo()
+    returnTrace()
+    waitForUnlock(ms)
+  }
+
+  EspLoaderTerminal: EspLoaderTerminal {
+    shape: class
+
+    clean()
+    writeLine(data)
+    write(data)
+  }
+
+  Terminal: "xterm.Terminal" {
+    shape: class
+    cols: int
+    rows: int
+    theme: object
+    scrollback: int
+
+    open(container)
+    write(data)
+    writeln(data)
+    clear()
+    reset()
+  }
+
+  FitAddon: "FitAddon.FitAddon" {
+    shape: class
+
+    fit()
+  }
+
+  FileEntry: FileEntry {
+    shape: class
+    address: hex
+    data: Uint8Array
+    fileName: string
+    progressBar: Element
+  }
+
+  AppState: AppState {
+    shape: class
+    device: SerialPort
+    transport: Transport
+    esploader: ESPLoader
+    chip: string
+    monDevice: SerialPort
+    monTransport: Transport
+    monRunning: boolean
+    fileEntryId: int
+
+    setStatus(state, text)
+    showAlert(msg, type)
+    showToast(msg, type)
+    addFileEntry()
+    cleanUp()
+  }
+
+  ThemeBridge: "BSI Theme Bridge" {
+    shape: class
+    APP_THEME_KEY: string
+    isEmbedded: boolean
+
+    applyBsiTheme(theme)
+    mapTheme(raw)
+    bsiToggleTheme()
+    bsiSetTheme(theme)
+  }
+
+  # Relationships
+  AppState -> ESPLoader: creates
+  AppState -> Transport: creates
+  ESPLoader -> Transport: uses
+  ESPLoader -> EspLoaderTerminal: logs to
+  EspLoaderTerminal -> Terminal: delegates to
+  Terminal -> FitAddon: loads
+  AppState -> FileEntry: manages list
+}
+
+# ============================================================
+# SEQUENCE: MAIN — Flash Firmware Flow
+# ============================================================
+seq-main: "Flash Firmware Flow" {
+  shape: sequence_diagram
+
+  user: User
+  browser: Browser
+  app: "ESP Flash App"
+  serial: "Web Serial API"
+  port: "Serial Port"
+  esp: ESPLoader
+  transport: Transport
+  chip: "ESP Chip"
+  terminal: "xterm Terminal"
+
+  # Connection
+  user -> app: "Click Connect"
+  app -> serial: "requestPort()"
+  serial -> browser: "Show port picker"
+  browser -> user: "Select COM port"
+  user -> browser: "Choose port"
+  browser -> serial: "Return SerialPort"
+  serial -> app: "SerialPort"
+  app -> transport: "new Transport(port, true)"
+  app -> esp: "new ESPLoader(transport, baud, terminal)"
+  esp -> transport: "connect()"
+  transport -> port: "open({baudRate})"
+  esp -> chip: "Sync handshake"
+  chip -> esp: "Chip type + MAC"
+  esp -> app: "return chipType"
+  app -> terminal: "write(chip info)"
+  app -> app: "setStatus('connected')"
+
+  # Add files
+  user -> app: "Choose firmware .bin file(s)"
+  app -> app: "FileReader.readAsArrayBuffer()"
+  app -> app: "Store as Uint8Array per entry"
+
+  # Flash
+  user -> app: "Click Flash"
+  app -> esp: "writeFlash({fileArray, compress, flashMode, flashFreq, flashSize})"
+  esp -> chip: "Erase sectors"
+  esp -> chip: "Write compressed blocks"
+  esp -> app: "reportProgress(idx, written, total)"
+  app -> app: "Update progress bars"
+  esp -> chip: "Verify MD5 hash"
+  chip -> esp: "MD5 match OK"
+  esp -> app: "Flash complete"
+  app -> terminal: "write('Flash complete!')"
+  app -> app: "showToast('Firmware flashed!', 'success')"
+}
+
+# ============================================================
+# SEQUENCE: SECONDARY — Serial Monitor Flow
+# ============================================================
+seq-secondary: "Serial Monitor Flow" {
+  shape: sequence_diagram
+
+  user: User
+  app: "ESP Flash App"
+  serial: "Web Serial API"
+  transport: Transport
+  port: "Serial Port"
+  terminal: "Monitor Terminal"
+
+  # Start
+  user -> app: "Switch to Monitor tab"
+  user -> app: "Select baud rate (e.g. 115200)"
+  user -> app: "Click Start"
+  app -> serial: "requestPort()"
+  serial -> app: "SerialPort"
+  app -> transport: "new Transport(port, true)"
+  app -> transport: "connect(baud)"
+  transport -> port: "open({baudRate})"
+  app -> app: "monRunning = true"
+  app -> app: "readLoop() — async loop"
+
+  # Data streaming
+  port -> transport: "Raw serial bytes"
+  transport -> app: "rawRead() returns data"
+  app -> terminal: "write(data)"
+  port -> transport: "More bytes..."
+  transport -> app: "rawRead()"
+  app -> terminal: "write(data)"
+
+  # Send command
+  user -> app: "Type command, click Send"
+  app -> transport: "rawWrite(cmd + lineEnding)"
+  transport -> port: "Write bytes"
+
+  # Reset device
+  user -> app: "Click Reset"
+  app -> transport: "setDTR(false); setRTS(true)"
+  transport -> port: "Toggle control signals"
+  app -> transport: "setDTR(true); setRTS(false)"
+  port -> transport: "ESP boot output"
+  transport -> app: "rawRead()"
+  app -> terminal: "write(boot log)"
+
+  # Stop
+  user -> app: "Click Stop"
+  app -> app: "monRunning = false"
+  app -> transport: "disconnect()"
+  transport -> port: "close()"
+  app -> app: "setStatus('disconnected')"
+}
+
+# ============================================================
+# ARCHITECTURE
+# ============================================================
+architecture: "System Architecture" {
+  browser: "Chrome / Edge Browser" {
+    shape: cloud
+
+    pwa: "PWA Shell" {
+      sw: "Service Worker"
+      manifest: "manifest.json"
+    }
+
+    ui: "User Interface" {
+      header: "Header (status, PWA install)"
+      tabs: "Tab Bar (Flash | Monitor)"
+      flash-tab: "Flash Tab" {
+        connection: "Connection Section"
+        files: "Firmware Files"
+        options: "Flash Options (mode/freq/size)"
+        log: "Output Log (xterm)"
+      }
+      monitor-tab: "Monitor Tab" {
+        controls: "Monitor Controls"
+        terminal: "Monitor Terminal (xterm)"
+        send-bar: "Send Bar (input + line ending)"
+      }
+    }
+
+    logic: "Application Logic" {
+      state: "App State Manager"
+      esptool: "esptool-js (ESPLoader)"
+      crypto: "CryptoJS (MD5 verify)"
+      theme: "BSI Theme Bridge"
+    }
+  }
+
+  serial: "Web Serial API" {
+    shape: hexagon
+  }
+
+  hardware: "Hardware" {
+    shape: rectangle
+    usb: "USB-to-Serial Adapter"
+    esp: "ESP32 / ESP8266 MCU"
+
+    usb -> esp: "UART TX/RX"
+  }
+
+  cdn: "CDN Dependencies" {
+    shape: cylinder
+    xterm: "xterm.js v5.3"
+    fit: "xterm-addon-fit v0.8"
+    cryptojs: "CryptoJS v4.2"
+    esptooljs: "esptool-js v0.5.7"
+  }
+
+  browser.logic.esptool -> serial: "Serial I/O"
+  serial -> hardware.usb: "USB protocol"
+  browser.ui.flash-tab.log -> browser.logic.esptool: "Terminal output"
+  browser.logic -> cdn: "CDN import"
+}
+
+# ============================================================
+# STATES — Connection State Machine
+# ============================================================
+states: "Connection State Machine" {
+  idle: "Idle\n(Disconnected)" {
+    style.fill: "#27272a"
+  }
+  port_select: "Port Selection\n(Browser picker)" {
+    style.fill: "#3f3f46"
+  }
+  connecting: "Connecting\n(ESP sync handshake)" {
+    style.fill: "#fbbf24"
+    style.font-color: "#000"
+  }
+  connected: "Connected\n(Chip identified)" {
+    style.fill: "#4ade80"
+    style.font-color: "#000"
+  }
+  flashing: "Flashing\n(Writing firmware)" {
+    style.fill: "#f59e0b"
+    style.font-color: "#000"
+  }
+  erasing: "Erasing\n(Full flash erase)" {
+    style.fill: "#fb923c"
+    style.font-color: "#000"
+  }
+  monitoring: "Serial Monitoring\n(Read loop active)" {
+    style.fill: "#60a5fa"
+    style.font-color: "#000"
+  }
+  error: "Error\n(Connection failed)" {
+    style.fill: "#f87171"
+    style.font-color: "#000"
+  }
+
+  idle -> port_select: "User clicks Connect"
+  port_select -> connecting: "Port selected"
+  port_select -> idle: "User cancels"
+  connecting -> connected: "Chip detected"
+  connecting -> error: "Sync failed"
+  connected -> flashing: "Click Flash"
+  connected -> erasing: "Click Erase"
+  connected -> idle: "Click Disconnect"
+  flashing -> connected: "Flash complete"
+  flashing -> error: "Flash error"
+  erasing -> connected: "Erase complete"
+  erasing -> error: "Erase error"
+  error -> idle: "cleanUp()"
+
+  # Monitor states
+  idle -> port_select: "Click Monitor Start"
+  port_select -> monitoring: "Port opened at baud"
+  monitoring -> idle: "Click Stop"
+  monitoring -> error: "Read error"
+}
