@@ -546,6 +546,13 @@
     }
   </style>
   <script>
+  // BSI Origin Validation
+  const ALLOWED_ORIGINS = ['https://blacksphereindustries.nl', 'https://www.blacksphereindustries.nl'];
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    ALLOWED_ORIGINS.push('http://localhost:8080');
+  }
+  function isAllowedOrigin(origin) { return ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.pages.dev'); }
+
   // BSI Theme Bridge v1.1 — iframe: parent-only control / standalone: local toggle
   (function() {
     var APP_THEME_KEY = 'serial_theme';
@@ -567,6 +574,7 @@
       s.textContent = '[data-theme-toggle]{display:none!important}';
       (document.head || document.documentElement).appendChild(s);
       window.addEventListener('message', function(e) {
+        if (!isAllowedOrigin(e.origin)) return;
         if (e.data && e.data.type === 'theme-change') applyBsiTheme(mapTheme(e.data.theme));
       });
       applyBsiTheme('dark');
@@ -1266,6 +1274,7 @@
       const _origReplace = history.replaceState.bind(history);
       history.replaceState = function() { _origReplace.apply(history, arguments); _notifyParentHash(); };
       window.addEventListener('message', function(e) {
+        if (!isAllowedOrigin(e.origin)) return;
         if (e.data && e.data.type === 'set-hash' && typeof e.data.hash === 'string') {
           if (window.location.hash !== '#' + e.data.hash) window.location.hash = e.data.hash;
         }
