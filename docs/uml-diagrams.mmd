@@ -1,0 +1,308 @@
+%% =============================================================================
+%% ESP Flash Tool — UML Diagrams (Mermaid)
+%% =============================================================================
+
+%% === Class Diagram ===
+classDiagram
+    class App {
+        +HTMLElement terminal
+        +HTMLElement fileArea
+        +Transport transport
+        +ESPLoader esploader
+        +string chip
+        +string device
+        +number fileEntryId
+        +boolean isConnected
+        +boolean isFlashing
+        +init()
+        +btnConnect()
+        +btnDisconnect()
+        +btnProgram()
+        +addFileEntry()
+        +removeFileEntry()
+        +readLoop()
+        +sendData(data)
+        +cleanUp()
+    }
+
+    class Transport {
+        +SerialPort device
+        +ReadableStreamDefaultReader reader
+        +WritableStreamDefaultWriter writer
+        +connect(baudRate)
+        +disconnect()
+        +read(timeout)
+        +write(data)
+        +rawRead()
+        +setDTR(value)
+        +setRTS(value)
+    }
+
+    class ESPLoader {
+        +Transport transport
+        +number baudrate
+        +string chip
+        +connect()
+        +detectChip()
+        +flashId()
+        +eraseFlash()
+        +writeFlash(fileArray, eraseAll, compress, onProgress)
+        +changeBaud(newBaud)
+        +hardReset()
+        +softReset()
+    }
+
+    class Terminal {
+        <<xterm.js>>
+        +write(data)
+        +clear()
+        +onData(callback)
+        +open(container)
+    }
+
+    class CryptoJS {
+        <<CDN Library>>
+        +MD5(data)
+    }
+
+    class FileEntry {
+        +number id
+        +string filename
+        +ArrayBuffer data
+        +string offset
+        +string md5Hash
+    }
+
+    App --> Transport : creates
+    App --> ESPLoader : creates
+    App --> Terminal : uses
+    App --> CryptoJS : hashes firmware
+    App --> FileEntry : manages 1..*
+    ESPLoader --> Transport : communicates via
+    Transport --> "Web Serial API" : uses
+
+
+%% === Sequence Diagram — Flash Firmware Workflow ===
+sequenceDiagram
+    participant User
+    participant UI as App UI
+    participant WS as Web Serial API
+    participant T as Transport
+    participant ESP as ESPLoader
+    participant Chip as ESP Device
+
+    User->>UI: Click "Connect"
+    activate UI
+    UI->>WS: navigator.serial.requestPort(filters)
+    WS-->>UI: SerialPort
+    UI->>T: new Transport(port)
+    activate T
+    UI->>ESP: new ESPLoader(transport, baudrate)
+    activate ESP
+    ESP->>T: connect(115200)
+    T->>WS: port.open({baudRate})
+    WS-->>T: opened
+    T-->>ESP: connected
+    ESP->>T: setDTR(false), setRTS(true)
+    T->>Chip: Reset into bootloader
+    ESP->>T: read(timeout)
+    T->>Chip: Sync packets
+    Chip-->>T: Sync response
+    T-->>ESP: Sync OK
+    ESP->>ESP: detectChip()
+    ESP->>T: read chip ID register
+    Chip-->>T: chip ID bytes
+    T-->>ESP: chip data
+    ESP-->>UI: chip = "ESP32" / "ESP32-S3" etc.
+    deactivate ESP
+    deactivate T
+    UI-->>User: Show chip info, enable flash button
+    deactivate UI
+
+    User->>UI: Select firmware files + offsets
+    User->>UI: Click "Program"
+    activate UI
+    UI->>UI: Validate file entries (offset, data)
+    UI->>UI: Compute MD5 for each file via CryptoJS
+
+    alt Baud rate change requested
+        UI->>ESP: changeBaud(newBaud)
+        ESP->>T: write baud change command
+        T->>Chip: Change baud
+        Chip-->>T: ACK
+        T->>WS: port.close() then port.open(newBaud)
+        WS-->>T: reopened
+        ESP-->>UI: baud changed
+    end
+
+    UI->>ESP: writeFlash(fileArray, eraseAll, compress, onProgress)
+    activate ESP
+
+    alt Erase all flash first
+        ESP->>T: eraseFlash command
+        T->>Chip: Erase all
+        Chip-->>T: Erase complete
+    end
+
+    loop For each file entry
+        ESP->>T: Begin flash at offset
+        T->>Chip: Flash begin command
+        Chip-->>T: ACK
+
+        loop For each data block
+            ESP->>T: Write block (compressed/raw)
+            T->>Chip: Flash data packet
+            Chip-->>T: ACK
+            ESP-->>UI: onProgress(percent)
+            UI-->>User: Update progress bar
+        end
+
+        ESP->>T: Flash finish for segment
+        T->>Chip: Flash end command
+        Chip-->>T: ACK
+        ESP->>ESP: Verify MD5
+    end
+
+    ESP-->>UI: Flash complete
+    deactivate ESP
+
+    opt Hard reset after flash
+        UI->>ESP: hardReset()
+        ESP->>T: setRTS(true) then setRTS(false)
+        T->>Chip: Hardware reset
+    end
+
+    UI-->>User: "Flash complete!" toast
+    deactivate UI
+
+%% === Sequence Diagram — Serial Monitor Workflow ===
+sequenceDiagram
+    participant User
+    participant UI as App UI
+    participant Term as xterm.js Terminal
+    participant T as Transport
+    participant WS as Web Serial API
+    participant Chip as ESP Device
+
+    User->>UI: Switch to Monitor tab
+    UI->>UI: Ensure connected
+    UI->>UI: Start readLoop()
+    activate UI
+
+    loop Continuous read loop
+        UI->>T: rawRead()
+        T->>WS: reader.read()
+        WS->>Chip: Read serial data
+        Chip-->>WS: Uint8Array data
+        WS-->>T: {value, done}
+        T-->>UI: data bytes
+
+        alt done === true
+            UI->>UI: Break loop, handle disconnect
+        else data received
+            UI->>Term: write(decodedText)
+            Term-->>User: Display serial output
+        end
+    end
+
+    User->>Term: Type text in terminal
+    Term->>UI: onData(inputText)
+    UI->>T: write(encoded data)
+    T->>WS: writer.write(data)
+    WS->>Chip: Send serial bytes
+    Chip-->>WS: (processed)
+    deactivate UI
+
+    User->>UI: Click "Disconnect"
+    UI->>T: disconnect()
+    T->>WS: reader.cancel(), writer.close(), port.close()
+    UI->>UI: cleanUp()
+    UI-->>User: UI reset to disconnected state
+
+
+%% === Component Diagram ===
+graph TB
+    subgraph Browser
+        UI["App UI<br/>(Tabs: Flash / Monitor)"]
+        TERM["xterm.js Terminal"]
+        CRYPTO["CryptoJS MD5"]
+        THEME["BSI Theme Bridge"]
+    end
+
+    subgraph "esptool-js (CDN)"
+        ESP_LIB["ESPLoader"]
+        TRANSPORT["Transport"]
+    end
+
+    subgraph "Web APIs"
+        SERIAL["Web Serial API"]
+    end
+
+    subgraph Hardware
+        ESP["ESP32 / ESP32-S3<br/>Microcontroller"]
+    end
+
+    UI --> TERM
+    UI --> CRYPTO
+    UI --> THEME
+    UI --> ESP_LIB
+    ESP_LIB --> TRANSPORT
+    TRANSPORT --> SERIAL
+    SERIAL --> ESP
+
+
+%% === State Diagram ===
+stateDiagram-v2
+    [*] --> Disconnected
+
+    state Disconnected {
+        [*] --> Idle
+    }
+
+    Disconnected --> Connecting : User clicks Connect
+
+    state Connecting {
+        [*] --> RequestingPort
+        RequestingPort --> OpeningPort : Port selected
+        OpeningPort --> Syncing : Port opened
+        Syncing --> DetectingChip : Sync OK
+        DetectingChip --> Connected : Chip detected
+        RequestingPort --> Disconnected : User cancelled
+        OpeningPort --> Disconnected : Open failed
+        Syncing --> Disconnected : Sync timeout
+    }
+
+    state Connected {
+        [*] --> FlashTab
+
+        state FlashTab {
+            [*] --> ReadyToFlash
+            ReadyToFlash --> ConfiguringFiles : Add/remove file entries
+            ConfiguringFiles --> ReadyToFlash : Files configured
+
+            ReadyToFlash --> Flashing : Click Program
+            state Flashing {
+                [*] --> ChangingBaud
+                ChangingBaud --> ErasingFlash : Baud set
+                ErasingFlash --> WritingBlocks : Erased
+                WritingBlocks --> VerifyingMD5 : All blocks written
+                VerifyingMD5 --> WritingBlocks : Next file
+                VerifyingMD5 --> FlashComplete : All files done
+            }
+            Flashing --> ReadyToFlash : Flash error
+            FlashComplete --> ReadyToFlash : Reset
+        }
+
+        FlashTab --> MonitorTab : Switch tab
+
+        state MonitorTab {
+            [*] --> Monitoring
+            Monitoring --> Monitoring : Read loop / send data
+        }
+
+        MonitorTab --> FlashTab : Switch tab
+    }
+
+    Connected --> Disconnecting : User clicks Disconnect
+    Connected --> Disconnecting : Device unplugged
+    Disconnecting --> Disconnected : Cleanup complete
